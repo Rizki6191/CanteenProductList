@@ -13,12 +13,9 @@ class CanteenProductController extends Controller
     public function index(Request $request)
     {
         $category = $request->get('category');
-        if ($category) 
-        {
-        $canteenProducts = CanteenProduct::where('category', $category)->get();
-        }
-         else 
-        {
+        if ($category) {
+            $canteenProducts = CanteenProduct::where('category', $category)->get();
+        } else {
             $canteenProducts = CanteenProduct::all();
         }
 
@@ -40,8 +37,33 @@ class CanteenProductController extends Controller
      */
     public function store(Request $request)
     {
-        CanteenProduct::create($request->all());
-        return redirect()->back()->with('status', "$request->name create successfully");
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'price' => 'required|integer',
+            'stock' => 'required|integer',
+            'category' => 'required|in:food,beverage',
+            'image' => '',
+        ]);
+
+        // Upload file (jika ada)
+        $imagePath = null;
+        if ($request->hasFile('image')) {
+            $imagePath = $request->file('image')->store('canteen_images', 'public');
+        }
+
+        // Simpan data ke database
+        $product = \App\Models\CanteenProduct::create([
+            'name' => $request->name,
+            'price' => $request->price,
+            'stock' => $request->stock,
+            'category' => $request->category,
+            'image' => $imagePath,
+        ]);
+
+        // Tampilkan langsung view dengan gambar saja
+        // Setelah berhasil tambah produk
+        return redirect()->route('index')->with('status', 'Produk berhasil ditambahkan!');
+
     }
 
     /**
@@ -66,13 +88,27 @@ class CanteenProductController extends Controller
     public function update(Request $request, CanteenProduct $canteenProduct)
     {
         $canteenProduct = CanteenProduct::find($request->id);
+        if ($request->hasFile('image')) {
+            // Hapus gambar lama (opsional)
+            if ($canteenProduct->image && file_exists(storage_path('app/public/'.$canteenProduct->image))) {
+                unlink(storage_path('app/public/'.$canteenProduct->image));
+            }
+
+            // Simpan gambar baru ke storage/app/public/images
+            $path = $request->file('image')->store('images', 'public');
+            $canteenProduct->image = $path;
+        }
+
+        // Update data lainnya
         $canteenProduct->update([
             'name' => $request->name,
             'price' => $request->price,
             'stock' => $request->stock,
-            'category' => $request->category
+            'category' => $request->category,
+            'image' => $canteenProduct->image, // simpan path baru
         ]);
-        return redirect()->back()->with('status', "$canteenProduct->name update successfully");
+
+        return redirect()->back()->with('status', "$canteenProduct->name updated successfully");
 
     }
 
@@ -83,6 +119,7 @@ class CanteenProductController extends Controller
     {
         $canteenProduct = CanteenProduct::find($id);
         $canteenProduct->delete();
+
         return redirect()->back()->with('status', "$canteenProduct->name deleted successfully");
     }
 }

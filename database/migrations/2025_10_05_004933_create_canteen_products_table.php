@@ -17,6 +17,7 @@ return new class extends Migration
             $table->integer('price');
             $table->unsignedInteger('stock');
             $table->enum('category', ['food', 'beverage']);
+            $table->string('image')->nullable();
             $table->timestamps();
         });
     }
@@ -26,6 +27,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('canteen_products');
+        Schema::table('canteen_products', function (Blueprint $table) {
+            $table->dropColumn('image');
+        });
     }
 };
